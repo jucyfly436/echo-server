@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: echo-server-service
+  labels:
+    app: echo-server
+spec:
+  selector:
+    app: echo-server
+  ports:
+    - protocol: TCP
+      port: 80        # Service 暴露的端口，外部访问时使用这个端口
+      targetPort: 8080 # service转发到pod的端口，必须和 Deployment 中容器暴露的端口一致
+      name: web        # 端口名称，供 ServiceMonitor 使用
+  type: NodePort

@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: echo-server-monitor
+  namespace: monitoring # 确保这个 ServiceMonitor 在 Prometheus 能发现的命名空间中
+  labels:
+    release: prometheus # 确保这个 label 能被你的 Prometheus 实例匹配到
+spec:
+  selector:
+    matchLabels:
+      app: echo-server # 对应 Service 的 label
+  namespaceSelector:
+    any: true # 如果 ServiceMonitor 和 Service 不在同一个命名空间，设置为 true
+  endpoints:
+  - port: web # 需要在 Service 中定义 port 的名字，或者直接用端口号
+    path: /metrics
+    interval: 15s

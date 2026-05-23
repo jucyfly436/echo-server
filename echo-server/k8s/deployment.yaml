@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment  #资源类型
+metadata:
+  name: echo-server
+  labels:
+    app: echo-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: echo-server  #这个deployment管理的Pod必须有这个标签
+  template:  #Pod模板，定义了这个Deployment创建的Pod的样子
+    metadata:
+      labels:
+        app: echo-server  #新建Pod的标签
+    spec:
+      imagePullSecrets:     # 镜像仓库需要认证，确保在命名空间中创建了对应的 Secret，并在这里引用它
+        - name: gitlab-registry-key
+      containers:
+        # 主应用容器
+        - name: echo-app
+          image: registry.gitlab.com/piggod-group/piggod-project:latest # 推送成功的镜像地址
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: echo-server-config
+          resources:
+            limits:
+              cpu: "200m"   #1000m = 1 个完整 CPU 核
+              memory: "256Mi"
+            requests:   #调度参考值，实际使用可能会超过这个值，但调度时会保证至少有这么多资源可用
+              cpu: "100m"
+              memory: "128Mi"
+          livenessProbe:           # 存活探针
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          readinessProbe:          # 就绪探针
+            httpGet:
+              path: /readiness
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            
+        # Redis 容器 (Sidecar)
+        - name: redis-sidecar
+          image: redis:alpine
+          ports:
+            - containerPort: 6379
+          resources:    # Redis 容器的资源限制和请求
+            limits:
+              cpu: "100m"
+              memory: "128Mi"
+            requests:
+              cpu: "50m"
+              memory: "64Mi"

@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Echo Server Dashboard</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-hover: #273549;
+      --border: #334155;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --primary: #38bdf8;
+      --success: #4ade80;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --radius: 12px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', 'Segoe UI', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 0; border-bottom: 1px solid var(--border); margin-bottom: 32px;
+    }
+    header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; }
+    header .badge {
+      background: var(--primary); color: #0f172a; font-weight: 600;
+      padding: 4px 12px; border-radius: 20px; font-size: 0.8rem;
+    }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 32px; }
+
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px;
+      transition: border-color 0.2s, transform 0.15s;
+    }
+    .card:hover { border-color: var(--primary); transform: translateY(-1px); }
+    .card-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+    }
+    .card-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+    .card-value { font-size: 1.8rem; font-weight: 700; }
+    .card-desc { font-size: 0.8rem; color: var(--text-muted); margin-top: 6px; }
+
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .status-dot.ok { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .status-dot.err { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+    .status-dot.checking { background: var(--warning); box-shadow: 0 0 8px var(--warning); animation: pulse 1s infinite; }
+
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .section-title {
+      font-size: 1rem; font-weight: 600; margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .section { margin-bottom: 32px; }
+
+    .playground {
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    }
+    .playground input {
+      flex: 1; min-width: 160px;
+      padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--text); font-size: 0.95rem;
+      outline: none; transition: border-color 0.2s;
+    }
+    .playground input:focus { border-color: var(--primary); }
+
+    .btn {
+      padding: 10px 20px; border-radius: 8px; border: none;
+      font-size: 0.9rem; font-weight: 600; cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--primary); color: #0f172a; }
+    .btn-primary:hover { background: #7dd3fc; }
+    .btn-outline {
+      background: transparent; border: 1px solid var(--border); color: var(--text);
+    }
+    .btn-outline:hover { background: var(--surface-hover); }
+
+    .response-box {
+      margin-top: 14px; padding: 14px; border-radius: 8px;
+      background: #0c1222; border: 1px solid var(--border);
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 0.85rem; white-space: pre-wrap; word-break: break-all;
+      max-height: 200px; overflow-y: auto;
+      color: var(--success);
+    }
+    .response-box.error { color: var(--danger); }
+
+    .endpoint-list {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;
+    }
+    .endpoint-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border-radius: 8px;
+      background: var(--bg); border: 1px solid var(--border);
+      font-size: 0.85rem; font-family: monospace;
+    }
+    .method {
+      font-weight: 700; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .method.get { background: var(--success); color: #0f172a; }
+
+    .visitor-list {
+      display: flex; flex-wrap: wrap; gap: 8px;
+    }
+    .visitor-tag {
+      padding: 6px 14px; border-radius: 20px;
+      background: var(--surface); border: 1px solid var(--border);
+      font-size: 0.85rem; transition: border-color 0.2s;
+    }
+    .visitor-tag:hover { border-color: var(--primary); }
+
+    .refresh-time { font-size: 0.75rem; color: var(--text-muted); }
+
+    footer {
+      text-align: center; padding: 30px 0; border-top: 1px solid var(--border);
+      color: var(--text-muted); font-size: 0.8rem; margin-top: 40px;
+    }
+
+    @media (max-width: 640px) {
+      .container { padding: 12px; }
+      header { flex-direction: column; gap: 10px; text-align: center; }
+      .grid { grid-template-columns: 1fr; }
+      .playground { flex-direction: column; }
+      .playground input { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Echo Server Dashboard</h1>
+      <span class="badge" id="versionBadge">...</span>
+    </header>
+
+    <!-- Status Cards -->
+    <div class="section">
+      <div class="section-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Service Status
+      </div>
+      <div class="grid">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Health Check</span>
+            <span class="status-dot checking" id="healthDot"></span>
+          </div>
+          <div class="card-value" id="healthStatus">---</div>
+          <div class="card-desc">GET /healthz</div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Readiness</span>
+            <span class="status-dot checking" id="readinessDot"></span>
+          </div>
+          <div class="card-value" id="readinessStatus">---</div>
+          <div class="card-desc">GET /readiness (pings Redis)</div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Version</span>
+          </div>
+          <div class="card-value" id="versionValue">---</div>
+          <div class="card-desc">Application version</div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Visitors</span>
+          </div>
+          <div class="card-value" id="visitorCount">---</div>
+          <div class="card-desc">Recorded in Redis</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- API Playground -->
+    <div class="section">
+      <div class="section-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        API Playground
+      </div>
+      <div class="card">
+        <div class="playground">
+          <span style="font-family:monospace;font-size:0.85rem;color:var(--text-muted)">GET /api/greet</span>
+          <input type="text" id="nameInput" placeholder="Your name (default: World)" />
+          <button class="btn btn-primary" onclick="testGreet()">Send</button>
+        </div>
+        <div class="response-box" id="greetResponse" style="display:none;"></div>
+      </div>
+    </div>
+
+    <!-- Recent Visitors -->
+    <div class="section">
+      <div class="section-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Recent Visitors
+        <button class="btn btn-outline" style="margin-left:auto;font-size:0.75rem;padding:5px 12px;" onclick="loadVisitors()">Refresh</button>
+      </div>
+      <div class="visitor-list" id="visitorList">
+        <span style="color:var(--text-muted)">Loading...</span>
+      </div>
+    </div>
+
+    <!-- API Endpoints -->
+    <div class="section">
+      <div class="section-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        API Endpoints
+      </div>
+      <div class="endpoint-list">
+        <div class="endpoint-item"><span class="method get">GET</span> /api/greet</div>
+        <div class="endpoint-item"><span class="method get">GET</span> /healthz</div>
+        <div class="endpoint-item"><span class="method get">GET</span> /readiness</div>
+        <div class="endpoint-item"><span class="method get">GET</span> /version</div>
+        <div class="endpoint-item"><span class="method get">GET</span> /metrics</div>
+        <div class="endpoint-item"><span class="method get">GET</span> /api/visitors</div>
+      </div>
+    </div>
+
+    <footer>
+      <span id="refreshTime">Last refreshed: just now</span>
+    </footer>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+
+    async function fetchAPI(path) {
+      const res = await fetch(`${API_BASE}${path}`);
+      return { status: res.status, ok: res.ok, body: await res.text() };
+    }
+
+    async function checkHealth() {
+      const dot = document.getElementById('healthDot');
+      const status = document.getElementById('healthStatus');
+      try {
+        const { ok, body } = await fetchAPI('/healthz');
+        if (ok && body === 'ok') {
+          dot.className = 'status-dot ok';
+          status.textContent = 'OK';
+          status.style.color = 'var(--success)';
+        } else {
+          throw new Error('unhealthy');
+        }
+      } catch {
+        dot.className = 'status-dot err';
+        status.textContent = 'DOWN';
+        status.style.color = 'var(--danger)';
+      }
+    }
+
+    async function checkReadiness() {
+      const dot = document.getElementById('readinessDot');
+      const status = document.getElementById('readinessStatus');
+      try {
+        const { ok } = await fetchAPI('/readiness');
+        if (ok) {
+          dot.className = 'status-dot ok';
+          status.textContent = 'Ready';
+          status.style.color = 'var(--success)';
+        } else {
+          dot.className = 'status-dot err';
+          status.textContent = 'Not Ready';
+          status.style.color = 'var(--danger)';
+        }
+      } catch {
+        dot.className = 'status-dot err';
+        status.textContent = 'Error';
+        status.style.color = 'var(--danger)';
+      }
+    }
+
+    async function loadVersion() {
+      try {
+        const { ok, body } = await fetchAPI('/version');
+        if (ok) {
+          const data = JSON.parse(body);
+          document.getElementById('versionValue').textContent = data.version;
+          document.getElementById('versionBadge').textContent = data.version;
+        }
+      } catch {
+        document.getElementById('versionValue').textContent = 'N/A';
+      }
+    }
+
+    async function loadVisitors() {
+      try {
+        const { ok, body } = await fetchAPI('/api/visitors');
+        const list = document.getElementById('visitorList');
+        if (ok) {
+          const data = JSON.parse(body);
+          const visitors = data.visitors || [];
+          document.getElementById('visitorCount').textContent = visitors.length;
+          if (visitors.length === 0) {
+            list.innerHTML = '<span style="color:var(--text-muted)">No visitors yet</span>';
+          } else {
+            list.innerHTML = visitors.map(v =>
+              `<span class="visitor-tag">${escapeHtml(v)}</span>`
+            ).join('');
+          }
+        } else {
+          list.innerHTML = '<span style="color:var(--danger)">Failed to load</span>';
+        }
+      } catch {
+        document.getElementById('visitorList').innerHTML =
+          '<span style="color:var(--danger)">Connection error</span>';
+      }
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    async function testGreet() {
+      const name = document.getElementById('nameInput').value.trim();
+      const box = document.getElementById('greetResponse');
+      box.style.display = 'block';
+      box.textContent = 'Sending...';
+      box.className = 'response-box';
+
+      try {
+        const path = name ? `/api/greet?name=${encodeURIComponent(name)}` : '/api/greet';
+        const { ok, body } = await fetchAPI(path);
+        if (ok) {
+          const data = JSON.parse(body);
+          box.textContent = JSON.stringify(data, null, 2);
+          box.className = 'response-box';
+          loadVisitors(); // refresh visitors list
+        } else {
+          box.textContent = `Error ${status}: ${body}`;
+          box.className = 'response-box error';
+        }
+      } catch (e) {
+        box.textContent = `Network error: ${e.message}`;
+        box.className = 'response-box error';
+      }
+    }
+
+    function updateRefreshTime() {
+      document.getElementById('refreshTime').textContent =
+        'Last refreshed: ' + new Date().toLocaleTimeString();
+    }
+
+    // Initial load
+    async function refreshAll() {
+      await Promise.all([checkHealth(), checkReadiness(), loadVersion(), loadVisitors()]);
+      updateRefreshTime();
+    }
+
+    document.getElementById('nameInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') testGreet();
+    });
+
+    refreshAll();
+    setInterval(refreshAll, 15000); // auto refresh every 15s
+  </script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+services:
+  app:
+    build: .
+    container_name: go-app
+
+    ports:
+      - "8080:8080"
+
+    environment:
+      REDIS_HOST: redis   #为什么不是localhost？因为在 Docker Compose 中，服务之间通过服务名称来通信，所以这里应该使用 redis 而不是 localhost。
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+
+    depends_on:       #只保证 Redis 容器已经启动，但不保证 Redis 已经完全就绪，所以我们在代码中还需要进行健康检查。
+      - redis
+
+  redis:
+    image: redis:alpine
+
+    ports:
+      - "6379:6379"   #port不是必须的，如果不需要外部访问 Redis，可以省略这一行，这样 Redis 就只能在 Docker 内部被 app 访问，更加安全。
